@@ -199,6 +199,8 @@ def get_junior_authors(args, verbose=False):
             exclude.add(author)
 
     junior_authors = list(include - exclude)
+    print()
+    print('------------------')
     print('# Possible Junior Authors:', len(junior_authors))
 
     all_names = [i[0].full
@@ -228,6 +230,9 @@ def main():
     parser.add_argument("-years_since_oldest_paper", type=int, default=3)
     parser.add_argument("-recent_num_years", type=int, default=3)
     args = parser.parse_args()
+
+    print('[Info] Extracting junior authors from ACL Anthology in recent {} years'.format(args.recent_num_years))
+    print('[Info] Author list will be saved to', args.output_file)
 
     junior_author_names = get_junior_authors(args, verbose=False)
 

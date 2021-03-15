@@ -13,8 +13,12 @@ Feel free to make [pull requests](pulls/) if you have suggestions to improve the
 #### Configure the Environment
 
 ```bash
+git clone https://github.com/zhijing-jin/acl_mentorship.git
+cd acl_mentorship
+
 git clone https://github.com/acl-org/acl-anthology
-pip install acl-anthology/bin/requirements.txt
+pip -r install acl-anthology/bin/requirements.txt
+mv extract_junior_authors.py acl-anthology/bin/extract_junior_authors.py
 ```
 
 #### How to Run
