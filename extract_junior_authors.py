@@ -133,13 +133,28 @@ class PaperLookup:
         from collections import defaultdict
 
         self.paper_id2year = defaultdict(str)
+        self.paper_id2url = defaultdict(str)
         for id_, paper in anthology.papers.items():
             year = paper.attrib.get('year', '')
+            url = paper.attrib.get('url', '')
+            self.paper_id2url[id_] = url
             self.paper_id2year[id_] = year
 
     def get_year(self, paper_id):
         return self.paper_id2year[paper_id]
 
+    def get_url(self, paper_id):
+        return self.paper_id2url[paper_id]
+
+class Author2Paper:
+    @staticmethod
+    def get_papers_of_author(author, anthology):
+        nested_paper_list = list(
+            anthology.people.name_to_papers[author[0]].values())
+        # nested_paper_list is a nested list, so we flatten it
+        paper_list = nested_paper_list[0] + nested_paper_list[1]
+
+        return paper_list
 
 def get_junior_authors(args, verbose=False):
     this_python_file = sys.argv[0]
@@ -185,10 +200,7 @@ def get_junior_authors(args, verbose=False):
     # (3) OR whohave more than 3 papers in the anthology
     paper_lookup = PaperLookup(anthology)
     for author in include:
-        nested_paper_list = list(
-            anthology.people.name_to_papers[author[0]].values())
-        # nested_paper_list is a nested list, so we flatten it
-        paper_list = nested_paper_list[0] + nested_paper_list[1]
+        paper_list = Author2Paper.get_papers_of_author(author, anthology)
 
         years = [paper_lookup.get_year(i) for i in paper_list]
         earliest = min(i for i in years if i)
@@ -209,6 +221,17 @@ def get_junior_authors(args, verbose=False):
         f.write('\n'.join(all_names))
         print('[Info] Saved {} author names to {}'.format(len(all_names), args.output_file))
 
+    dict_list = []
+    for author in junior_authors:
+        paper_list = Author2Paper.get_papers_of_author(author, anthology)
+        paper_list = sorted(paper_list)
+        dict_item = {'id': author[0].id_, 'name': author[0].full}
+        dict_item.update({'paper_{}'.format(i): paper_lookup.get_url(paper)
+                          for i, paper in enumerate(paper_list)})
+        dict_list.append(dict_item)
+    # from efficiency.log import write_dict_to_csv
+    write_dict_to_csv(dict_list, args.file_author2papers, verbose=True)
+
     if verbose:
         import random
 
@@ -221,11 +244,27 @@ def get_junior_authors(args, verbose=False):
     return all_names
 
 
+def write_dict_to_csv(data, file, verbose=False):
+    if verbose:
+        print('[Info] Writing {} lines into {}'.format(len(data), file))
+
+    import csv
+
+    if not len(data): return
+
+    fieldnames = ['id', 'name', 'paper_0', 'paper_1', 'paper_2', 'paper_3']
+    with open(file, mode='w') as csv_file:
+        writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(data)
+
+
 def main():
     import argparse
 
     parser = argparse.ArgumentParser('Specs about how to extract the junior author names from ACL anthology')
     parser.add_argument("-output_file", default='junior_authors.txt')
+    parser.add_argument("-file_author2papers", default='junior_authors_n_papers.csv')
     parser.add_argument("-max_num_papers", type=int, default=3)
     parser.add_argument("-years_since_oldest_paper", type=int, default=3)
     parser.add_argument("-recent_num_years", type=int, default=3)
@@ -233,6 +272,8 @@ def main():
 
     print('[Info] Extracting junior authors from ACL Anthology in recent {} years'.format(args.recent_num_years))
     print('[Info] Author list will be saved to', args.output_file)
+    print('[Info] Author-to-papers list will be saved to', args.file_author2papers)
+    print('... ...')
 
     junior_author_names = get_junior_authors(args, verbose=False)
 
